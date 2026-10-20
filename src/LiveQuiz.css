@@ -1,0 +1,208 @@
+.lq-container {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: #080a16;
+  color: #f4f2ff;
+  font-family: "DM Sans", sans-serif;
+  padding: 24px;
+}
+
+.lq-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 24px;
+  font-size: 14px;
+  font-weight: 700;
+  color: #a4a5bd;
+  letter-spacing: 1px;
+}
+
+.lq-timer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 50px;
+  color: #f4c879;
+  font-size: 18px;
+  font-family: "Space Grotesk", sans-serif;
+}
+
+.lq-question-box {
+  background: linear-gradient(145deg, #15172b, #101221);
+  border: 1px solid rgba(151, 112, 255, 0.2);
+  border-radius: 20px;
+  padding: 40px;
+  text-align: center;
+  margin-bottom: 30px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+}
+
+.lq-question-box h2 {
+  margin: 0;
+  font-family: "Space Grotesk", sans-serif;
+  font-size: clamp(24px, 4vw, 36px);
+  line-height: 1.4;
+}
+
+.lq-options-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+  flex: 1;
+}
+
+.lq-option {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 24px;
+  border: 0;
+  border-radius: 16px;
+  font-size: clamp(16px, 2vw, 22px);
+  font-weight: 700;
+  color: white;
+  cursor: pointer;
+  transition: transform 0.1s, filter 0.2s;
+  box-shadow: inset 0 -5px 0 rgba(0,0,0,0.2);
+}
+
+.lq-option:active:not(:disabled) {
+  transform: translateY(4px);
+  box-shadow: inset 0 -1px 0 rgba(0,0,0,0.2);
+}
+
+.lq-option:disabled {
+  cursor: not-allowed;
+  filter: grayscale(0.6) brightness(0.7);
+}
+
+.lq-opt-A { background: #ff5365; }
+.lq-opt-B { background: #4d8fff; }
+.lq-opt-C { background: #f6be44; }
+.lq-opt-D { background: #3bc98d; }
+
+.lq-option-letter {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 10px;
+  flex-shrink: 0;
+}
+
+.lq-feedback {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  text-align: center;
+  animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.lq-feedback-correct { color: #5de0a6; }
+.lq-feedback-wrong { color: #ff5365; }
+
+.lq-feedback h1 {
+  font-family: "Space Grotesk", sans-serif;
+  font-size: 48px;
+  margin: 16px 0;
+}
+
+/* Podium Styles */
+.podium-wrap {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 12px;
+  height: 280px;
+  margin-top: 50px;
+}
+
+.podium-block {
+  width: 90px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  border-radius: 12px 12px 0 0;
+  position: relative;
+  font-family: "Space Grotesk", sans-serif;
+  box-shadow: inset 0 6px 15px rgba(255,255,255,0.3), 0 10px 30px rgba(0,0,0,0.5);
+  animation: growUp 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.1) forwards;
+  transform-origin: bottom;
+  opacity: 0;
+}
+
+.podium-block strong {
+  margin-top: 15px;
+  font-size: 32px;
+  color: rgba(0,0,0,0.6);
+  text-shadow: 1px 1px 0 rgba(255,255,255,0.4);
+}
+
+.podium-player-name {
+  position: absolute;
+  top: -40px;
+  width: 150px;
+  text-align: center;
+  font-size: 15px;
+  font-weight: 700;
+  color: white;
+  text-shadow: 0 2px 4px rgba(0,0,0,0.8);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.podium-player-score {
+  position: absolute;
+  top: -20px;
+  width: 100%;
+  text-align: center;
+  font-size: 12px;
+  color: #f4c879;
+  font-weight: 700;
+}
+
+.podium-rank-1 { 
+  height: 220px; 
+  background: linear-gradient(135deg, #ffe28a, #d49520);
+  z-index: 3;
+  animation-delay: 0.4s;
+}
+
+.podium-rank-2 { 
+  height: 160px; 
+  background: linear-gradient(135deg, #f3f4f8, #9aa0ba);
+  z-index: 2;
+  animation-delay: 0.2s;
+}
+
+.podium-rank-3 { 
+  height: 120px; 
+  background: linear-gradient(135deg, #ffbc85, #b85e25);
+  z-index: 1;
+  animation-delay: 0s;
+}
+
+@keyframes popIn {
+  0% { transform: scale(0.8); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes growUp {
+  0% { transform: scaleY(0); opacity: 0; }
+  100% { transform: scaleY(1); opacity: 1; }
+}
+
+@media (max-width: 768px) {
+  .lq-options-grid { grid-template-columns: 1fr; }
+  .lq-question-box { padding: 30px 20px; }
+  .podium-block { width: 75px; }
+}
