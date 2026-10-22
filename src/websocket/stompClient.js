@@ -9,10 +9,14 @@ export const connectWebSocket = (onConnect, onError) => {
         return stompClient;
     }
 
-    // Convert http://localhost:8080 to ws://localhost:8080/ws
     const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
-    const wsUrl = baseUrl.replace(/^http/, 'ws') + '/ws';
-
+    
+    // 1. Remove '/api' from the base URL
+    // 2. Safely map http -> ws and https -> wss
+    const wsUrl = baseUrl
+        .replace(/\/api$/, '') 
+        .replace(/^http:/, 'ws:')
+        .replace(/^https:/, 'wss:') + '/ws';
     stompClient = new Client({
         brokerURL: wsUrl,
         reconnectDelay: 5000,
