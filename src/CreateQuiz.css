@@ -670,16 +670,6 @@
   flex-shrink: 0;
   color: #65dfaa;
 }
-
-.cq-explanation {
-  margin-top: 22px;
-  margin-bottom: 0;
-}
-
-.cq-explanation textarea {
-  min-height: 65px;
-}
-
 /* Add question and validation */
 
 .cq-add-question {

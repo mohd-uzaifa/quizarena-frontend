@@ -42,11 +42,10 @@ export default function CreateQuiz({ teacherId, onBack, onSave }) {
     question: backendQ.questionText,
     options: [backendQ.optionA, backendQ.optionB, backendQ.optionC, backendQ.optionD],
     answer: optionLetters.indexOf(backendQ.correctOption),
-    explanation: "", // Backend entity doesn't store explanations permanently
     regenerationCount: backendQ.regenerationCount || 0
   });
 
-  async function generateQuestions() {
+ async function generateQuestions() {
     if (!title.trim() || !topic.trim()) {
       setNotice("Please provide a quiz title and topic.");
       return;
@@ -56,6 +55,8 @@ export default function CreateQuiz({ teacherId, onBack, onSave }) {
     setNotice("");
     setLoadingMsg("Creating quiz workspace...");
 
+    let newQuizId = null; // Declare outside the try block so the catch block can access it for cleanup
+
     try {
       // 1. Create the draft quiz in MySQL
       const quizRes = await api.post("/quizzes", {
@@ -63,24 +64,81 @@ export default function CreateQuiz({ teacherId, onBack, onSave }) {
         difficulty: difficultyMap[difficulty],
         teacherId: teacherId,
       });
-      const newQuizId = quizRes.data.id;
+      newQuizId = quizRes.data.id;
       setQuizId(newQuizId);
 
-      // 2. Ask Groq to generate questions
-      setLoadingMsg("AI is generating questions. This may take a few seconds...");
-      const qRes = await api.post(`/quizzes/${newQuizId}/questions/generate-questions`, {
-        questionCount: questionCount
-      });
+      // 2. Chunk the AI generation requests dynamically
+      let allGeneratedQuestions = [];
+      let remainingQuestions = questionCount;
+      let coveredConcepts = []; 
 
-      // 3. Render the real questions from the backend
-      setQuestions(qRes.data.map(mapBackendToFrontend));
+      // FIX 1: Enforce a strict max batch size of 5 for ALL difficulties.
+      // This guarantees the AI never hits the token limit while generating JSON.
+      const BATCH_SIZE = 5;
+      let maxRetries = 3;
+      let currentRetries = 0;
+
+      while (remainingQuestions > 0) {
+        const currentBatchCount = Math.min(remainingQuestions, BATCH_SIZE);
+        
+        setLoadingMsg(`AI generating questions... (${allGeneratedQuestions.length}/${questionCount} completed)`);
+        
+        try {
+          // Send the 'existingConcepts' to the backend to prevent duplicates
+          const qRes = await api.post(`/quizzes/${newQuizId}/questions/generate-questions`, {
+            questionCount: currentBatchCount,
+            existingConcepts: coveredConcepts
+          });
+
+          const generatedBatch = qRes.data;
+
+          // Extract concepts from this batch to avoid in the next loop
+          const newConcepts = generatedBatch
+            .map(q => q.concept)
+            .filter(concept => concept && concept.trim() !== "");
+          coveredConcepts = [...coveredConcepts, ...newConcepts];
+
+          allGeneratedQuestions = [...allGeneratedQuestions, ...generatedBatch];
+          
+          // Only decrease the remaining count if the batch was successful
+          remainingQuestions -= currentBatchCount;
+          currentRetries = 0; // Reset retries after a successful batch
+          
+        } catch (batchError) {
+          console.warn("AI generation batch failed. Retrying...", batchError);
+          currentRetries++;
+          
+          if (currentRetries > maxRetries) {
+             throw new Error("AI struggled to generate unique options for this batch. Rolling back...");
+          }
+          
+          setLoadingMsg(`AI hit a limit. Retrying batch... (Attempt ${currentRetries}/${maxRetries})`);
+        }
+      }
+
+      // 3. Render the combined questions from the backend
+      setQuestions(allGeneratedQuestions.map(mapBackendToFrontend));
       setStep(2);
+
     } catch (error) {
       console.error("Failed to generate:", error);
       setNotice(
-        error.response?.data?.message || 
-        "Failed to generate questions. Check backend console for Groq API errors."
+        error.message || error.response?.data?.message || 
+        "Failed to generate questions. Cleaning up..."
       );
+      
+      // FIX 2: Transactional Rollback
+      // If the generation fails at any point, delete the orphaned quiz so it doesn't pollute the dashboard
+      if (newQuizId) {
+        try {
+          await api.delete(`/quizzes/${newQuizId}`);
+        } catch (cleanupError) {
+          console.error("Failed to delete orphaned quiz during cleanup:", cleanupError);
+        }
+      }
+      setQuizId(null);
+      setQuestions([]);
+
     } finally {
       setSaving(false);
       setLoadingMsg("");
@@ -105,8 +163,8 @@ export default function CreateQuiz({ teacherId, onBack, onSave }) {
   }
 
   async function addCustomQuestion() {
-    if (questions.length >= 20) {
-      setNotice("A quiz can contain a maximum of 20 questions.");
+    if (questions.length >= 15) {
+      setNotice("A quiz can contain a maximum of 15 questions.");
       return;
     }
 
@@ -151,8 +209,8 @@ export default function CreateQuiz({ teacherId, onBack, onSave }) {
 
   async function regenerateQuestion(id) {
     const qToRegen = questions.find((q) => q.id === id);
-    if (qToRegen.regenerationCount >= 3) {
-      setNotice("This question has reached the maximum of 3 regenerations.");
+    if (qToRegen.regenerationCount >= 1) {
+      setNotice("This question has reached the maximum of 1 regeneration.");
       return;
     }
 
@@ -332,7 +390,7 @@ export default function CreateQuiz({ teacherId, onBack, onSave }) {
               <input
                 type="range"
                 min="5"
-                max="20"
+                max="15"
                 value={questionCount}
                 onChange={(event) =>
                   setQuestionCount(Number(event.target.value))
@@ -342,7 +400,7 @@ export default function CreateQuiz({ teacherId, onBack, onSave }) {
               <strong>{questionCount}</strong>
             </div>
             <small className="cq-hint">
-              Choose between 5 and 20 questions.
+              Choose between 5 and 15 questions.
             </small>
           </label>
 
@@ -406,9 +464,8 @@ export default function CreateQuiz({ teacherId, onBack, onSave }) {
                 <div className="cq-question-actions">
                   <button
                     type="button"
-                    title={`Regenerate question (${3 - question.regenerationCount} left)`}
-                    onClick={() => regenerateQuestion(question.id)}
-                    disabled={saving || question.regenerationCount >= 3}
+                    title={question.regenerationCount >= 1 ? "Regeneration limit reached" : "Regenerate question (1 left)"}                    onClick={() => regenerateQuestion(question.id)}
+                    disabled={saving || question.regenerationCount >= 1}
                   >
                     <RefreshCw size={15} />
                   </button>
@@ -477,7 +534,7 @@ export default function CreateQuiz({ teacherId, onBack, onSave }) {
             className="cq-add-question"
             type="button"
             onClick={addCustomQuestion}
-            disabled={saving || questions.length >= 20}
+            disabled={saving || questions.length >= 15}
           >
             <Plus size={17} /> Add custom question
           </button>
